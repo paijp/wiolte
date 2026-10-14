@@ -8,6 +8,8 @@
  */
 #include <WioLTEforArduino.h>
 #include <WioOTA.h>
+#include <stdio.h>
+#include <string.h>
 
 #ifndef OTA_URL
 #define OTA_URL	"http://beam.soracom.io:8888/wiolte/"
