@@ -81,6 +81,7 @@ jobs:
           cp artifacts/bootloader/bootloader.bin rel/
           cp artifacts/sketch/OtaBasic.ino.bin rel/
           cp artifacts/wioflash-apk/*.apk rel/wioflash.apk
+          echo "${GITHUB_RUN_NUMBER}" > rel/version.txt
           git add rel
           if git diff --cached --quiet; then
             echo "rel/ unchanged"

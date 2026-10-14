@@ -10,8 +10,9 @@ android {
 		applicationId 'jp.paijp.wioflash'
 		minSdk 24
 		targetSdk 34
-		versionCode 1
-		versionName '0.1.0'
+		/* CI run number, so every main build is newer than the last */
+		versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int)
+		versionName "0.1.${System.getenv('GITHUB_RUN_NUMBER') ?: '0'}"
 	}
 
 	/*

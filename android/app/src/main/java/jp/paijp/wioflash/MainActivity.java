@@ -45,6 +45,7 @@ public class MainActivity extends Activity implements DfuSe.Log {
 	private Button flashBtn;
 	private Uri fileUri;
 	private boolean busy;
+	private Updater updater;
 
 	private final BroadcastReceiver permReceiver = new BroadcastReceiver() {
 		@Override
@@ -135,11 +136,16 @@ public class MainActivity extends Activity implements DfuSe.Log {
 			registerReceiver(permReceiver, f, Context.RECEIVER_NOT_EXPORTED);
 		else
 			registerReceiver(permReceiver, f);
+
+		updater = new Updater(this, this);
+		updater.register();
+		updater.check();
 	}
 
 	@Override
 	protected void onDestroy() {
 		unregisterReceiver(permReceiver);
+		updater.unregister();
 		super.onDestroy();
 	}
 
