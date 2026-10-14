@@ -42,6 +42,24 @@ void WioOTA::begin(WioLTE &wio, const char *baseUrl, unsigned long intervalMs)
 	_base = baseUrl;
 	_interval = intervalMs;
 	_first = true;
+	bootReport();
+}
+
+/* Describe what the bootloader did with the last update record. */
+void WioOTA::bootReport()
+{
+	const struct wioota_meta *m = (const struct wioota_meta *)WIOOTA_META_ADDR;
+
+	if (m->magic != WIOOTA_MAGIC)
+		print("wioota: boot (no update record; written by DFU)\n");
+	else if (m->fail == 0)
+		ota_logf(this, "wioota: boot (update REJECTED by bootloader: staging crc != %08lx)\n",
+			(unsigned long)m->crc);
+	else if (m->done == 0)
+		ota_logf(this, "wioota: boot (running image %lu bytes crc %08lx, installed by bootloader)\n",
+			(unsigned long)m->len, (unsigned long)m->crc);
+	else
+		print("wioota: boot (update record pending; bootloader did not copy it)\n");
 }
 
 uint32_t WioOTA::currentCrc() const

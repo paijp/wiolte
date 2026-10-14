@@ -2,4 +2,6 @@
 <resources>
 	<!-- STM32 system bootloader in DFU mode: 0483:df11 -->
 	<usb-device vendor-id="1155" product-id="57105" />
+	<!-- Wio LTE SerialUSB (running sketch): 0483:5740 -->
+	<usb-device vendor-id="1155" product-id="22336" />
 </resources>

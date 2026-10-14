@@ -2,7 +2,8 @@
  * WioOTA basic example.
  *
  * - Prints a counter every 5 seconds to the server log.
- * - Commands from the server: "led R G B", "ping", "reset" (built in).
+ * - Commands from the server or USB serial: "led R G B", "ping",
+ *   "reset" (server only, built in).
  * - When a different firmware is placed on the server it is
  *   downloaded, the board resets and the bootloader installs it.
  */
@@ -41,6 +42,7 @@ void setup()
 	Wio.PowerSupplyLTE(true);
 	delay(500);
 	Ota.setEcho(&SerialUSB);
+	Ota.onCommand(onCommand);
 
 	Wio.LedSetRGB(10, 10, 0);
 	while (!Wio.TurnOnOrReset())
@@ -63,6 +65,21 @@ void loop()
 		last = millis();
 		Ota.print("uptime ");
 		Ota.println(millis() / 1000);
+	}
+	/* Commands also arrive line by line from USB serial. */
+	static char line[80];
+	static int len;
+	while (SerialUSB.available()) {
+		int c = SerialUSB.read();
+
+		if (c == '\r' || c == '\n') {
+			line[len] = 0;
+			if (len > 0)
+				onCommand(line);
+			len = 0;
+		} else if (len < (int)sizeof(line) - 1) {
+			line[len++] = c;
+		}
 	}
 	Ota.poll();
 }

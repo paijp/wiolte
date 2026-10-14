@@ -58,6 +58,9 @@ public:
 	 */
 	bool poll(bool force = false);
 
+	/* Print what the bootloader did at the last reset (called by begin()). */
+	void bootReport();
+
 	/* CRC-32 of the running image as recorded by the bootloader (0 if unknown). */
 	uint32_t currentCrc() const;
 
