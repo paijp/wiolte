@@ -10,7 +10,7 @@
  *
  *	void setup() {
  *		... Wio.Init(), TurnOnOrReset(), Activate() ...
- *		Ota.begin(Wio, "http://beam.soracom.io:18080/wiolte/index.php");
+ *		Ota.begin(Wio, "http://beam.soracom.io:18080/");
  *		Ota.onCommand(handler);
  *	}
  *	void loop() {
@@ -43,7 +43,7 @@ public:
 
 	WioOTA();
 
-	/* baseUrl: server endpoint, e.g. "http://beam.soracom.io:18080/wiolte/index.php" */
+	/* baseUrl: server endpoint, e.g. "http://beam.soracom.io:18080/" */
 	void begin(WioLTE &wio, const char *baseUrl, unsigned long intervalMs = 10000);
 	void setInterval(unsigned long intervalMs) { _interval = intervalMs; }
 	void onCommand(CommandHandler handler) { _handler = handler; }
@@ -69,6 +69,7 @@ public:
 
 private:
 	bool postLog();
+	void diag(const char *msg);
 	bool fetch(char *resp, int size);
 	void handleLine(char *line);
 	bool update(uint32_t len, uint32_t crc);

@@ -84,13 +84,13 @@ BOOTボタンを押しながらRSTを押して離すと、DFUモードになり�
 
 1. `server/index.php` を VPS に置きます。PHPの書き込み権限が必要な `data/` ディレクトリが、同じ場所に作られます。
 2. SORACOM Beam で **ウェブサイトエントリポイント** を設定します（HTTPエントリポイントはクエリを転送しないため使えません）。
-   - 転送先: `https://<VPS>`（端末の `/wiolte/index.php?...` がパスとクエリごと転送されます）
+   - 転送先: `https://<VPS>/<設置パス>/`（端末は `http://beam.soracom.io:18080/?a=...` にアクセスし、クエリごと転送されます。サーバー側の実装やパスを変えてもファームの修正は不要です）
    - IMSIヘッダー付与を有効にします（署名ヘッダーは任意）。
 3. （任意）署名ヘッダーを使う場合は、事前共有鍵を `server/config.php` に設定します。
    ```php
    <?php $config["beam_secret"] = "（Beamに設定した事前共有鍵）";
    ```
-4. スケッチ側のURLは `OTA_URL`（初期値 `http://beam.soracom.io:18080/wiolte/index.php`）です。
+4. スケッチ側のURLは `OTA_URL`（初期値 `http://beam.soracom.io:18080/`）です。
 5. nginx では `data/` と `config.php` を外部から読めないようにしてください。PHP は `Content-Length` を付けて応答します（Wio LTE は chunked 転送を扱えないため）。
 
 ### 操作（VPS 上）

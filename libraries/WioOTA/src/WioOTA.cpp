@@ -103,8 +103,17 @@ bool WioOTA::postLog()
 		s_buf[i] = _log[(_tail + i) % WIOOTA_LOG_SIZE];
 	s_buf[n] = 0;
 	url(u, sizeof(u), "a=log");
-	if (!_wio->HttpPost(u, s_buf, &code) || code != 200)
+	if (!_wio->HttpPost(u, s_buf, &code)) {
+		diag("wioota: log POST failed (no HTTP response; check LTE / Beam)");
 		return false;
+	}
+	if (code != 200) {
+		char m[64];
+
+		snprintf(m, sizeof(m), "wioota: log POST HTTP %d", code);
+		diag(m);
+		return false;
+	}
 	_tail += n;
 	return true;
 }
@@ -117,10 +126,40 @@ bool WioOTA::fetch(char *resp, int size)
 	snprintf(q, sizeof(q), "a=poll&crc=%08lx", (unsigned long)currentCrc());
 	url(u, sizeof(u), q);
 	len = _wio->HttpGet(u, resp, size);
-	if (len < 0)
+	if (len < 0) {
+		diag("wioota: poll GET failed (no HTTP response; check LTE / Beam)");
 		return false;
+	}
 	resp[len] = 0;
+	/* Every server reply starts with "ok"; anything else is e.g. an error page. */
+	if (strncmp(resp, "ok\n", 3) != 0) {
+		char m[100];
+		int i;
+
+		snprintf(m, sizeof(m), "wioota: unexpected poll reply (%d bytes): %.60s", len, resp);
+		for (i = 0; m[i]; i++)
+			if (m[i] == '\r' || m[i] == '\n')
+				m[i] = ' ';
+		diag(m);
+		return false;
+	}
+	memmove(resp, resp + 3, len - 2);
 	return true;
+}
+
+/*
+ * Diagnostics go to the echo stream (USB serial) only: they describe
+ * why the server could not be reached, so queueing them for the
+ * server would be pointless.  Repeats are suppressed.
+ */
+void WioOTA::diag(const char *msg)
+{
+	static char last[100];
+
+	if (_echo == NULL || strcmp(last, msg) == 0)
+		return;
+	strncpy(last, msg, sizeof(last) - 1);
+	_echo->println(msg);
 }
 
 void WioOTA::handleLine(char *line)
@@ -157,6 +196,7 @@ bool WioOTA::poll(bool force)
 	postLog();		/* a failed upload must not block updates */
 	if (!fetch(s_buf, 1024))
 		return false;
+	diag("wioota: server OK");
 
 	/* Split before dispatching: an update reuses s_buf. */
 	static char resp[1025];

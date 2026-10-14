@@ -13,7 +13,7 @@
 #include <string.h>
 
 #ifndef OTA_URL
-#define OTA_URL	"http://beam.soracom.io:18080/wiolte/index.php"
+#define OTA_URL	"http://beam.soracom.io:18080/"
 #endif
 
 WioLTE Wio;
@@ -45,10 +45,17 @@ void setup()
 	Ota.onCommand(onCommand);
 
 	Wio.LedSetRGB(10, 10, 0);
-	while (!Wio.TurnOnOrReset())
+	SerialUSB.println("lte: power on");
+	while (!Wio.TurnOnOrReset()) {
+		SerialUSB.println("lte: module not responding, retry");
 		delay(1000);
-	while (!Wio.Activate("soracom.io", "sora", "sora"))
+	}
+	SerialUSB.println("lte: attach soracom.io");
+	while (!Wio.Activate("soracom.io", "sora", "sora")) {
+		SerialUSB.println("lte: attach failed (SIM / coverage?), retry");
 		delay(1000);
+	}
+	SerialUSB.println("lte: connected, server " OTA_URL);
 	Wio.LedSetRGB(0, 10, 0);
 
 	Ota.begin(Wio, OTA_URL, 10000);

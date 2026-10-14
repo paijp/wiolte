@@ -9,7 +9,7 @@
  *
  * Requests (all from the device):
  *	POST ?a=log			body: log text -> appended to log.txt
- *	GET  ?a=poll&crc=XXXXXXXX	-> "fw <len> <crc>\n" if firmware.bin differs,
+ *	GET  ?a=poll&crc=XXXXXXXX	-> "ok\n", then "fw <len> <crc>\n" if firmware.bin differs,
  *					   followed by the pending commands
  *	GET  ?a=fw&o=OFF&n=LEN&crc=XXXXXXXX -> LEN bytes of firmware.bin from OFF
  */
@@ -99,7 +99,7 @@ case "log":
 	reply("ok\n");
 
 case "poll":
-	$out = "";
+	$out = "ok\n";	/* lets the device tell us apart from error pages */
 	$devcrc = isset($_GET["crc"]) ? strtolower($_GET["crc"]) : "";
 	if (is_readable($fw) && ($len = filesize($fw)) > 0) {
 		$crc = sprintf("%08x", crc32(file_get_contents($fw)));
