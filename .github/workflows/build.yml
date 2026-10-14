@@ -82,6 +82,14 @@ jobs:
           cp artifacts/sketch/OtaBasic.ino.bin rel/
           cp artifacts/wioflash-apk/*.apk rel/wioflash.apk
           echo "${GITHUB_RUN_NUMBER}" > rel/version.txt
+          # One image for a blank board: bootloader at 0x08000000, 0xff up to
+          # 0x08010000, then the starter application.
+          python3 - <<'PY'
+          boot = open('rel/bootloader.bin', 'rb').read()
+          app = open('rel/OtaBasic.ino.bin', 'rb').read()
+          assert len(boot) <= 0xc000
+          open('rel/wiolte-full.bin', 'wb').write(boot + b'\xff' * (0x10000 - len(boot)) + app)
+          PY
           git add rel
           if git diff --cached --quiet; then
             echo "rel/ unchanged"

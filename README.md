@@ -71,6 +71,8 @@ APKは、リポジトリにある固定のデバッグ鍵（`android/debug.keyst
 
 BOOTボタンを押しながらRSTを押して離すと、DFUモードになります。
 
+新品のボードには `rel/wiolte-full.bin` を1つ書くだけで済みます。ブートローダー（0x08000000）と、最初のダウンロードを行う最小アプリ（OtaBasic、0x08010000）を1ファイルにまとめたものです。書き込み後はLTEに接続してサーバーを確認し、`firmware.bin` があればそれに置き換わります。
+
 - PCから書き込む場合:
   ```sh
   dfu-util -d 0483:df11 -a 0 -s 0x08000000 -D bootloader/bootloader.bin

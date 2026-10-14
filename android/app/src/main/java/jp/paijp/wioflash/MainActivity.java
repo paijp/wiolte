@@ -276,7 +276,9 @@ public class MainActivity extends Activity implements DfuSe.Log {
 		if (remember)
 			recents.remember(uri, name);
 		long a = detectAddress(img);
-		String kind = a == BOOT_ADDR ? "bootloader" : a == APP_ADDR ? "application" : "unknown image";
+		String kind = a == APP_ADDR ? "application"
+				: a != BOOT_ADDR ? "unknown image"
+				: img.length > APP_ADDR - BOOT_ADDR ? "bootloader + application" : "bootloader";
 		imageView.setText(String.format("%s, %d bytes, %s%s", name, img.length, kind,
 				a < 0 ? "" : String.format(" @ 0x%08x", a)));
 	}
