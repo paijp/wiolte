@@ -4,12 +4,18 @@ Wio LTE（STM32F439 + EC21）が、SORACOM経由で **自分自身のファー�
 Claude などが VPS 上のファイルを置き換えるだけで、ファームの更新、ログの取得、コマンドの送信ができることを目標にしています。
 
 ```
-Claude ── VPS: data/<IMSI>/firmware.bin を置く / cmd.txt に追記 / log.txt を読む
+Claude ── VPS: data/<ID>/firmware.bin を置く / cmd.txt に追記 / log.txt を読む
                ↑↓ HTTPS
          SORACOM Beam ウェブサイトエントリポイント（http://beam.soracom.io:18080 → https://VPS）
                ↑↓ LTE
          Wio LTE: [bootloader] + [アプリ + WioOTA]
 ```
+
+## 実機で確認済み
+
+- `rel/wiolte-full.bin` を Android アプリから DFU で書き込み、LTE 接続・サーバー接続まで動作
+- VPS に `firmware.bin`（約 126KB）を置いてから、ダウンロード・書き込み・新ファームでの起動まで約 1 分
+- `cmd.txt` のコマンド（`ping`、`led 0 0 10`）が次のポーリングで届き、応答が `log.txt` に返る
 
 ## 構成
 
@@ -21,7 +27,7 @@ Claude ── VPS: data/<IMSI>/firmware.bin を置く / cmd.txt に追記 / log.
 | `server/index.php` | サーバー側（Beamの転送先）。PHPのファイル1つです |
 | `android/` | Wio LTEにUSB DFUで `.bin` を書き込むAndroidアプリ（OTG接続） |
 
-## フラッシュ配置（1MB）
+## フラッシュ配置
 
 | セクタ | アドレス | サイズ | 用途 |
 |---|---|---|---|
@@ -30,6 +36,8 @@ Claude ── VPS: data/<IMSI>/firmware.bin を置く / cmd.txt に追記 / log.
 | 4–7 | 0x08010000 | 448KB | アプリ |
 | 8–11 | 0x08080000 | 512KB | 一時保存領域（ダウンロードしたイメージ） |
 
+Wio LTE の STM32F439VI は 2MB ですが、Seeed のボード設定に合わせて前半 1MB だけを使っています（後半は未使用）。
+
 アプリの開始アドレス 0x08010000 は、Seeed STM32F4 コアの `USER_ADDR_ROM` と同じです。
 そのため、コアを改造せずにビルド時のプロパティ指定だけで、ブートローダーの後ろに配置できます。
 
@@ -37,7 +45,7 @@ Claude ── VPS: data/<IMSI>/firmware.bin を置く / cmd.txt に追記 / log.
 
 1. アプリが `Ota.poll()` を定期的に呼びます（標準は10秒間隔）。
    - 溜まったログを `POST ?a=log` で送ります。
-   - `GET ?a=poll&crc=<現在のCRC>` で、コマンドと更新の有無を受け取ります。
+   - `GET ?a=poll&crc=<現在のCRC>` で、コマンドと更新の有無を受け取ります。応答は必ず `ok` で始まり、それ以外（Beam のエラーページなど）は異常として扱います。
 2. サーバーの `firmware.bin` のCRCが端末のCRCと違うと、応答に `fw <len> <crc>` が入ります。
 3. WioOTAは2KBずつ `GET ?a=fw` で取得し、一時保存領域に書き込みます。全体のCRCを確認してから更新記録を書き、リセットします。
 4. ブートローダーは一時保存領域のCRCを再確認し、アプリ領域へコピー・検証してから `done` を記録し、アプリを起動します。
@@ -63,7 +71,15 @@ arduino-cli compile --fqbn SeeedJP:Seeed_STM32F4:wioGpsM4 \
 # out/OtaBasic.ino.bin がサーバーに置くイメージ（0x08010000 用）
 ```
 
-GitHub Actions（`.github/workflows/build.yml`）が、ブートローダー、サンプルスケッチ、Android APKをビルドします。main への push では、ビルド結果を `rel/` にコミットします（`rel/bootloader.bin`、`rel/OtaBasic.ino.bin`、`rel/wioflash.apk`）。
+GitHub Actions（`.github/workflows/build.yml`）が、ブートローダー、サンプルスケッチ、Android APKをビルドします。main への push では、ビルド結果を `rel/` にコミットします。
+
+| ファイル | 内容 |
+|---|---|
+| `rel/wiolte-full.bin` | ブートローダー + 最小アプリ（新品のボードに DFU で書く 1 ファイル） |
+| `rel/bootloader.bin` | ブートローダーのみ |
+| `rel/OtaBasic.ino.bin` | サンプルアプリ（0x08010000 用。サーバーに置くイメージの例） |
+| `rel/wioflash.apk` / `rel/version.txt` | Android アプリと、そのビルド番号 |
+
 アプリは起動時に `rel/version.txt` を確認し、新しいビルドがあれば、ダイアログで確認したうえで `rel/wioflash.apk` をダウンロードしてインストールします（初回のみ「このアプリからのインストールを許可」をオンにする必要があります）。
 APKは、リポジトリにある固定のデバッグ鍵（`android/debug.keystore`）で署名します。そのため、新しいAPKを上書きインストールできます。
 
@@ -75,10 +91,12 @@ BOOTボタンを押しながらRSTを押して離すと、DFUモードになり�
 
 - PCから書き込む場合:
   ```sh
-  dfu-util -d 0483:df11 -a 0 -s 0x08000000 -D bootloader/bootloader.bin
-  dfu-util -d 0483:df11 -a 0 -s 0x08010000:leave -D out/OtaBasic.ino.bin
+  dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D rel/wiolte-full.bin
   ```
 - Androidから書き込む場合: `android/` のアプリ（Wio Flash）で、▾ からファイルを選び（共有・「開く」でも受け取れます）、**program** を押します。書き込み先（0x08000000 / 0x08010000）はファイルのベクタテーブルから自動判別します。書き込み・ベリファイ後に起動し、スケッチの USB シリアルに自動で接続して出力を表示します。下の入力欄からボードへ送信できます（send ボタンはそのまま、Enter は LF 付き）。
+  - ▾ には「開く…」、選択中のファイル、最近使ったファイル（最大 8 件）が並びます。
+  - アプリ自身のメッセージは「· 」付きで、ボードの出力と区別して表示します。共有・開くで受け取ったときは、そのインテントの内容も表示します。
+  - リセットボタンはありません（Wio LTE はホストからリセットできないため）。
 
 以後の更新は、サーバーに `firmware.bin` を置くだけです。
 
@@ -87,7 +105,7 @@ BOOTボタンを押しながらRSTを押して離すと、DFUモードになり�
 1. `server/index.php` を VPS に置きます。PHPの書き込み権限が必要な `data/` ディレクトリが、同じ場所に作られます。
 2. SORACOM Beam で **ウェブサイトエントリポイント** を設定します（HTTPエントリポイントはクエリを転送しないため使えません）。
    - 転送先: `https://<VPS>/<設置パス>/`（端末は `http://beam.soracom.io:18080/?a=...` にアクセスし、クエリごと転送されます。サーバー側の実装やパスを変えてもファームの修正は不要です）
-   - IMSIヘッダー付与を有効にします（署名ヘッダーは任意）。
+   - IMSI ヘッダーまたは IMEI ヘッダーの付与を有効にします（署名ヘッダーは任意）。サーバーは `X-Soracom-IMSI`、なければ `X-Soracom-IMEI` を端末 ID（`data/<ID>/`）に使います。
 3. （任意）署名ヘッダーを使う場合は、事前共有鍵を `server/config.php` に設定します。
    ```php
    <?php $config["beam_secret"] = "（Beamに設定した事前共有鍵）";
@@ -98,15 +116,29 @@ BOOTボタンを押しながらRSTを押して離すと、DFUモードになり�
 ### 操作（VPS 上）
 
 ```sh
-cp out/OtaBasic.ino.bin data/<IMSI>/firmware.bin   # ファーム更新
-echo "led 0 0 10" >> data/<IMSI>/cmd.txt           # コマンド送信（次のポーリングで1回だけ届く）
-echo "reset"      >> data/<IMSI>/cmd.txt           # リセット（WioOTA の組み込みコマンド）
-tail -f data/<IMSI>/log.txt                         # ログ
+cp out/OtaBasic.ino.bin data/<ID>/firmware.bin   # ファーム更新
+echo "led 0 0 10" >> data/<ID>/cmd.txt           # コマンド送信（次のポーリングで1回だけ届く）
+echo "reset"      >> data/<ID>/cmd.txt           # リセット（WioOTA の組み込みコマンド）
+tail -f data/<ID>/log.txt                         # ログ
 ```
+
+## USB シリアルでの切り分け
+
+サンプルと WioOTA は、次のような内容を USB シリアルに出します（Android アプリで表示できます）。サーバーに届かない問題の切り分けに使えます。
+
+| 出力 | 意味 |
+|---|---|
+| `lte: power on` → `lte: attach soracom.io` → `lte: connected, server ...` | LTE 接続の各段階（失敗時は理由付きでリトライ） |
+| `wioota: boot (...)` | 前回のリセットでブートローダーが何をしたか（DFU で書かれた／新ファームをインストール／CRC 不一致で拒否） |
+| `wioota: poll GET failed (no HTTP response; ...)` | HTTP 応答なし（LTE や Beam を確認） |
+| `wioota: log POST HTTP 404` など | サーバーが HTTP エラーを返した |
+| `wioota: unexpected poll reply (...)` | `ok` で始まらない応答（Beam の転送先の誤りなど） |
+| `wioota: server OK` | サーバーと通信できた |
 
 ## アプリ側の約束
 
-- `Ota.poll()` を `loop()` から頻繁に呼んでください。通信は、設定した間隔ごとにだけ行います。
+- `Ota.poll()` を `loop()` から頻繁に呼んでください。通信は、設定した間隔（`Ota.begin()` の第3引数、サンプルは 10 秒）ごとにだけ行います。
+- サーバーに置くファームにも必ず WioOTA を入れてください。入っていないファームを入れると、以後の遠隔更新ができず、USB DFU での書き直しが必要になります。
 - ログは `Ota.print()` / `Ota.println()` で書きます。4KBのバッファに溜まり、次のポーリングで送られます。
 - コマンドは `Ota.onCommand(handler)` で、1行ずつ受け取ります。
 
