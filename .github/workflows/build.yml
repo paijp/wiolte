@@ -1,0 +1,63 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  bootloader:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi
+      - run: make -C bootloader
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bootloader
+          path: bootloader/bootloader.bin
+
+  sketch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install core and libraries
+        run: |
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://www.seeed.co.jp/package_SeeedJP_index.json
+          arduino-cli core update-index
+          arduino-cli core install SeeedJP:Seeed_STM32F4
+          arduino-cli lib install "Wio LTE for Arduino"
+      - name: Build OtaBasic (linked at 0x08010000)
+        run: |
+          arduino-cli compile --fqbn SeeedJP:Seeed_STM32F4:wioGpsM4 \
+            --libraries libraries \
+            --build-property build.ldscript=ld/flash.ld \
+            --build-property build.vect=VECT_TAB_FLASH \
+            --output-dir out \
+            libraries/WioOTA/examples/OtaBasic
+          ls -l out
+      - name: Check vector table
+        run: |
+          # word 1 (reset handler) must point into 0x0801xxxx..0x0807xxxx
+          od -A n -t x4 -N 8 out/OtaBasic.ino.bin
+          od -A n -t x4 -j 4 -N 4 out/OtaBasic.ino.bin | grep -Eq ' 080[1-7]'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sketch
+          path: out/OtaBasic.ino.bin
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: cd android && ./gradlew --no-daemon assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wioflash-apk
+          path: android/app/build/outputs/apk/debug/*.apk

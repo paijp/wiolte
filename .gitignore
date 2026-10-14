@@ -1,0 +1,9 @@
+bootloader/*.elf
+bootloader/*.bin
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+server/data/
+server/config.php
+out/

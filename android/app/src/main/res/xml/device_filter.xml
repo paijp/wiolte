@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!-- STM32 system bootloader in DFU mode: 0483:df11 -->
+	<usb-device vendor-id="1155" product-id="57105" />
+</resources>
