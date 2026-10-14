@@ -1,0 +1,11 @@
+<resources>
+	<string name="app_name">Wio Flash</string>
+	<string name="no_device">Wio LTE が見つかりません。OTG で接続してください。</string>
+	<string name="no_program">プログラム未選択</string>
+	<string name="program">program</string>
+	<string name="choose_program">プログラムを選択</string>
+	<string name="open_program">開く…</string>
+	<string name="dropdown">▾</string>
+	<string name="send">send</string>
+	<string name="send_hint">ボードへ送信 — enter で LF 付き</string>
+</resources>

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:orientation="vertical"
+	android:padding="12dp">
+
+	<TextView
+		android:id="@+id/status"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:textStyle="bold"
+		android:text="@string/no_device" />
+
+	<!-- The program, and which program.  The dropdown is a separate tap so
+	     that the common case - flash the same file again - is one tap on
+	     "program" and never goes near a file chooser. -->
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		android:paddingTop="4dp">
+
+		<Button
+			android:id="@+id/program"
+			android:layout_width="0dp"
+			android:layout_weight="1"
+			android:layout_height="wrap_content"
+			android:text="@string/program" />
+
+		<Button
+			android:id="@+id/choose"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:minWidth="48dp"
+			android:contentDescription="@string/choose_program"
+			android:text="@string/dropdown" />
+	</LinearLayout>
+
+	<TextView
+		android:id="@+id/image"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:textSize="12sp"
+		android:paddingBottom="4dp"
+		android:text="@string/no_program" />
+
+	<ProgressBar
+		android:id="@+id/progress"
+		style="?android:attr/progressBarStyleHorizontal"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content" />
+
+	<ScrollView
+		android:id="@+id/scroll"
+		android:layout_width="match_parent"
+		android:layout_height="0dp"
+		android:layout_weight="1"
+		android:paddingTop="8dp">
+
+		<TextView
+			android:id="@+id/log"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:fontFamily="monospace"
+			android:textSize="12sp"
+			android:textIsSelectable="true" />
+	</ScrollView>
+
+	<!-- Typing to the board.  The button sends exactly what is in the box;
+	     the keyboard's enter adds an LF. -->
+	<LinearLayout
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:orientation="horizontal"
+		android:paddingTop="4dp">
+
+		<EditText
+			android:id="@+id/input"
+			android:layout_width="0dp"
+			android:layout_weight="1"
+			android:layout_height="wrap_content"
+			android:fontFamily="monospace"
+			android:hint="@string/send_hint"
+			android:imeOptions="actionSend"
+			android:inputType="text"
+			android:importantForAutofill="no"
+			android:maxLines="1" />
+
+		<Button
+			android:id="@+id/send"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="@string/send" />
+	</LinearLayout>
+</LinearLayout>

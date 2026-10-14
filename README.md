@@ -76,7 +76,7 @@ BOOTボタンを押しながらRSTを押して離すと、DFUモードになり�
   dfu-util -d 0483:df11 -a 0 -s 0x08000000 -D bootloader/bootloader.bin
   dfu-util -d 0483:df11 -a 0 -s 0x08010000:leave -D out/OtaBasic.ino.bin
   ```
-- Androidから書き込む場合: `android/` のアプリ（Wio Flash）で `.bin` を選び、`Boot`（0x08000000）または `App`（0x08010000）を選んで書き込みます。
+- Androidから書き込む場合: `android/` のアプリ（Wio Flash）で、▾ からファイルを選び（共有・「開く」でも受け取れます）、**program** を押します。書き込み先（0x08000000 / 0x08010000）はファイルのベクタテーブルから自動判別します。書き込み・ベリファイ後に起動し、スケッチの USB シリアルに自動で接続して出力を表示します。下の入力欄からボードへ送信できます（send ボタンはそのまま、Enter は LF 付き）。
 
 以後の更新は、サーバーに `firmware.bin` を置くだけです。
 
