@@ -63,7 +63,8 @@ arduino-cli compile --fqbn SeeedJP:Seeed_STM32F4:wioGpsM4 \
 # out/OtaBasic.ino.bin がサーバーに置くイメージ（0x08010000 用）
 ```
 
-GitHub Actions（`.github/workflows/build.yml`）が、ブートローダー、サンプルスケッチ、Android APKをビルドし、成果物（artifact）として保存します。
+GitHub Actions（`.github/workflows/build.yml`）が、ブートローダー、サンプルスケッチ、Android APKをビルドします。main への push では、ビルド結果を `rel/` にコミットします（`rel/bootloader.bin`、`rel/OtaBasic.ino.bin`、`rel/wioflash.apk`）。
+APKは、リポジトリにある固定のデバッグ鍵（`android/debug.keystore`）で署名します。そのため、新しいAPKを上書きインストールできます。
 
 ## 初回の書き込み（USB DFU）
 

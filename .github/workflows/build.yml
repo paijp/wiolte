@@ -2,6 +2,7 @@ name: build
 
 on:
   push:
+    paths-ignore: ['rel/**']
   pull_request:
   workflow_dispatch:
 
@@ -61,3 +62,31 @@ jobs:
         with:
           name: wioflash-apk
           path: android/app/build/outputs/apk/debug/*.apk
+
+  # On main, commit the built binaries into rel/.
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [bootloader, sketch, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Commit rel/
+        run: |
+          mkdir -p rel
+          cp artifacts/bootloader/bootloader.bin rel/
+          cp artifacts/sketch/OtaBasic.ino.bin rel/
+          cp artifacts/wioflash-apk/*.apk rel/wioflash.apk
+          git add rel
+          if git diff --cached --quiet; then
+            echo "rel/ unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update rel/ from ${GITHUB_SHA::7}"
+          git push

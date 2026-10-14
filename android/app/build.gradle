@@ -14,6 +14,19 @@ android {
 		versionName '0.1.0'
 	}
 
+	/*
+	 * Fixed debug key (committed on purpose) so that APKs built on
+	 * different CI runners can be installed over each other.
+	 */
+	signingConfigs {
+		debug {
+			storeFile rootProject.file('debug.keystore')
+			storePassword 'android'
+			keyAlias 'androiddebugkey'
+			keyPassword 'android'
+		}
+	}
+
 	compileOptions {
 		sourceCompatibility JavaVersion.VERSION_17
 		targetCompatibility JavaVersion.VERSION_17
