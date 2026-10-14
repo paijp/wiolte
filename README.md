@@ -6,7 +6,7 @@ Claude などが VPS 上のファイルを置き換えるだけで、ファー�
 ```
 Claude ── VPS: data/<IMSI>/firmware.bin を置く / cmd.txt に追記 / log.txt を読む
                ↑↓ HTTPS
-         SORACOM Beam（http://beam.soracom.io:8888 → https://VPS/...）
+         SORACOM Beam ウェブサイトエントリポイント（http://beam.soracom.io:18080 → https://VPS）
                ↑↓ LTE
          Wio LTE: [bootloader] + [アプリ + WioOTA]
 ```
@@ -81,14 +81,15 @@ BOOTボタンを押しながらRSTを押して離すと、DFUモードになり�
 ## サーバー設定
 
 1. `server/index.php` を VPS に置きます。PHPの書き込み権限が必要な `data/` ディレクトリが、同じ場所に作られます。
-2. SORACOM Beam で HTTP エントリポイントを設定します。
-   - 転送先: `https://<VPS>/<path>/index.php`
-   - 「IMSIヘッダー付与」と「署名ヘッダー付与」を有効にします。
-3. 署名の事前共有鍵を、`server/config.php` に設定します。
+2. SORACOM Beam で **ウェブサイトエントリポイント** を設定します（HTTPエントリポイントはクエリを転送しないため使えません）。
+   - 転送先: `https://<VPS>`（端末の `/wiolte/index.php?...` がパスとクエリごと転送されます）
+   - IMSIヘッダー付与を有効にします（署名ヘッダーは任意）。
+3. （任意）署名ヘッダーを使う場合は、事前共有鍵を `server/config.php` に設定します。
    ```php
    <?php $config["beam_secret"] = "（Beamに設定した事前共有鍵）";
    ```
-4. スケッチ側のURLは、`OTA_URL`（初期値 `http://beam.soracom.io:8888/wiolte/`）を Beam の設定に合わせます。
+4. スケッチ側のURLは `OTA_URL`（初期値 `http://beam.soracom.io:18080/wiolte/index.php`）です。
+5. nginx では `data/` と `config.php` を外部から読めないようにしてください。PHP は `Content-Length` を付けて応答します（Wio LTE は chunked 転送を扱えないため）。
 
 ### 操作（VPS 上）
 

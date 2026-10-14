@@ -12,7 +12,7 @@
 #include <string.h>
 
 #ifndef OTA_URL
-#define OTA_URL	"http://beam.soracom.io:8888/wiolte/"
+#define OTA_URL	"http://beam.soracom.io:18080/wiolte/index.php"
 #endif
 
 WioLTE Wio;

@@ -109,13 +109,18 @@ case "poll":
 	$cf = "$dir/cmd.txt";
 	if (is_file($cf) && ($fp = fopen($cf, "r+"))) {
 		flock($fp, LOCK_EX);
-		$out .= stream_get_contents($fp);
+		$all = stream_get_contents($fp);
+		/* The device reads at most 1KB; deliver whole lines, keep the rest. */
+		$take = 0;
+		while (($nl = strpos($all, "\n", $take)) !== false && strlen($out) + $nl + 1 <= 1000)
+			$take = $nl + 1;
+		$out .= substr($all, 0, $take);
 		ftruncate($fp, 0);
+		rewind($fp);
+		fwrite($fp, substr($all, $take));
 		flock($fp, LOCK_UN);
 		fclose($fp);
 	}
-	if (strlen($out) > 1000)
-		fail(500, "command queue too long");
 	reply($out);
 
 case "fw":
