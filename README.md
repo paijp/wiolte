@@ -26,6 +26,7 @@ Claude ── VPS: data/<ID>/firmware.bin を置く / cmd.txt に追記 / log.tx
 | `libraries/WioOTA/examples/OtaBasic/` | サンプルスケッチ |
 | `server/index.php` | サーバー側（Beamの転送先）。PHPのファイル1つです |
 | `android/` | Wio LTEにUSB DFUで `.bin` を書き込むAndroidアプリ（OTG接続） |
+| `web/` | 同じことをブラウザ（WebUSB）から行うページ。GitHub Pages で公開 |
 
 ## フラッシュ配置
 
@@ -89,6 +90,7 @@ BOOTボタンを押しながらRSTを押して離すと、DFUモードになり�
 
 新品のボードには `rel/wiolte-full.bin` を1つ書くだけで済みます。ブートローダー（0x08000000）と、最初のダウンロードを行う最小アプリ（OtaBasic、0x08010000）を1ファイルにまとめたものです。書き込み後はLTEに接続してサーバーを確認し、`firmware.bin` があればそれに置き換わります。
 
+- ブラウザから書き込む場合（Chrome / Edge、WebUSB）: https://paijp.github.io/wiolte/ を開き、「wiolte-full.bin を使う」→ **program** を押して、一覧から DFU デバイスを選びます。書き込み後はスケッチの USB シリアルを表示します（Android は WebUSB、デスクトップは Web Serial）。ページは `web/`（`index.html` + `app.js`）で、`web/wiolte-dfu.html` はオフライン用の 1 ファイル版です（`python3 web/make-offline.py` で再生成）。Windows では DFU デバイスに WinUSB ドライバーが、Linux では udev の設定が必要です。
 - PCから書き込む場合:
   ```sh
   dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D rel/wiolte-full.bin

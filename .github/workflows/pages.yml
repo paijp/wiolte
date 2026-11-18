@@ -1,0 +1,47 @@
+name: pages
+
+# Publishes web/ (the WebUSB DFU page) and the images in rel/ to GitHub Pages.
+# rel/ is committed by the build workflow's GITHUB_TOKEN, which does not
+# trigger push workflows, hence workflow_run as well.
+on:
+  push:
+    branches: [main]
+    paths: ['web/**', '.github/workflows/pages.yml']
+  workflow_run:
+    workflows: [build]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Assemble site
+        run: |
+          mkdir -p site
+          cp web/index.html web/app.js web/wiolte-dfu.html site/
+          cp rel/wiolte-full.bin rel/bootloader.bin rel/OtaBasic.ino.bin site/
+          ls -l site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
