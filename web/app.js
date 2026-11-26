@@ -346,7 +346,15 @@
 	function lost(why) {
 		serial = null;
 		line(why);
-		status("シリアル切断");
+		status("シリアル切断 — 再接続を待っています…");
+		/* The board re-enumerates after an OTA reset; follow it back. */
+		(async function () {
+			for (var i = 0; i < 60 && !serial && !busy; i++) {
+				await sleep(1000);
+				if (await connectSerial(false))
+					return;
+			}
+		})();
 	}
 
 	async function closeSerial() {
