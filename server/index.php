@@ -131,7 +131,7 @@ case "fw":
 		fail(409, "firmware changed");
 	$o = (int)$_GET["o"];
 	$n = (int)$_GET["n"];
-	if ($o < 0 || $n <= 0 || $n > 4096 || $o + $n > strlen($data))
+	if ($o < 0 || $n <= 0 || $n > 65536 || $o + $n > strlen($data))
 		fail(416, "range");
 	reply(substr($data, $o, $n), "application/octet-stream");
 

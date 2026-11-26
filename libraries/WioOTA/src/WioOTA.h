@@ -34,7 +34,7 @@
 #define WIOOTA_POST_MAX		1024	/* log bytes per request */
 #endif
 #ifndef WIOOTA_CHUNK
-#define WIOOTA_CHUNK		2048	/* firmware bytes per request */
+#define WIOOTA_CHUNK		16384	/* firmware bytes per request */
 #endif
 
 class WioOTA : public Print {
