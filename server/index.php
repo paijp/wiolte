@@ -30,6 +30,7 @@ function fail($code, $msg)
 	http_response_code($code);
 	header("Content-Type: text/plain");
 	header("Content-Length: ".strlen($msg));
+	header("Connection: close");
 	print $msg;
 	exit;
 }
@@ -38,6 +39,9 @@ function reply($body, $type = "text/plain")
 {
 	header("Content-Type: ".$type);
 	header("Content-Length: ".strlen($body));
+	/* Let the LTE module finish the request at once instead of waiting
+	 * for the connection to time out (seen as ~30s stalls). */
+	header("Connection: close");
 	print $body;
 	exit;
 }
