@@ -1,7 +1,8 @@
 /*
  * WioOTA basic example.
  *
- * - Prints a counter every 5 seconds to the server log.
+ * - Polls the server every 60 s ("interval <s>" command changes it) and
+ *   logs the uptime every minute.
  * - Commands from the server or USB serial: "led R G B", "ping",
  *   "reset" (server only, built in).
  * - When a different firmware is placed on the server it is
@@ -58,7 +59,7 @@ void setup()
 	SerialUSB.println("lte: connected, server " OTA_URL);
 	Wio.LedSetRGB(0, 10, 0);
 
-	Ota.begin(Wio, OTA_URL, 10000);
+	Ota.begin(Wio, OTA_URL, 60000);	/* "interval <s>" from the server changes it */
 	Ota.onCommand(onCommand);
 	Ota.print("boot, crc=");
 	Ota.println(Ota.currentCrc(), HEX);
@@ -68,7 +69,7 @@ void loop()
 {
 	static unsigned long last;
 
-	if (millis() - last >= 5000) {
+	if (millis() - last >= 60000) {
 		last = millis();
 		Ota.print("uptime ");
 		Ota.println(millis() / 1000);

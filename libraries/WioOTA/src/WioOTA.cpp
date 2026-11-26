@@ -295,6 +295,17 @@ void WioOTA::handleLine(char *line)
 		postLog();
 		system_reset();
 	}
+	if (strncmp(line, "interval ", 9) == 0) {
+		long sec = atol(line + 9);
+
+		if (sec >= 1 && sec <= 86400) {
+			_interval = sec * 1000UL;
+			ota_logf(this, "wioota: interval %ld s\n", sec);
+		} else {
+			print("wioota: interval must be 1..86400 s\n");
+		}
+		return;
+	}
 	if (_handler)
 		_handler(line);
 }

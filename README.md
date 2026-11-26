@@ -43,7 +43,7 @@ Wio LTE の STM32F439VI は 2MB ですが、Seeed のボード設定に合わせ
 
 ## 更新の流れ
 
-1. アプリが `Ota.poll()` を定期的に呼びます（標準は10秒間隔）。
+1. アプリが `Ota.poll()` を定期的に呼びます（標準は60秒間隔）。
    - 溜まったログを `POST ?a=log` で送ります。
    - `GET ?a=poll&crc=<現在のCRC>` で、コマンドと更新の有無を受け取ります。応答は必ず `ok` で始まり、それ以外（Beam のエラーページなど）は異常として扱います。
 2. サーバーの `firmware.bin` のCRCが端末のCRCと違うと、応答に `fw <len> <crc>` が入ります。
@@ -113,6 +113,7 @@ BOOTボタンを押しながらRSTを押して離すと、DFUモードになり�
 cp out/OtaBasic.ino.bin data/<ID>/firmware.bin   # ファーム更新
 echo "led 0 0 10" >> data/<ID>/cmd.txt           # コマンド送信（次のポーリングで1回だけ届く）
 echo "reset"      >> data/<ID>/cmd.txt           # リセット（WioOTA の組み込みコマンド）
+echo "interval 1" >> data/<ID>/cmd.txt           # ポーリング間隔を 1 秒に（組み込み。再起動で既定に戻る）
 tail -f data/<ID>/log.txt                         # ログ
 ```
 
@@ -141,7 +142,7 @@ tail -f data/<ID>/log.txt                         # ログ
 
 ## アプリ側の約束
 
-- `Ota.poll()` を `loop()` から頻繁に呼んでください。通信は、設定した間隔（`Ota.begin()` の第3引数、サンプルは 10 秒）ごとにだけ行います。
+- `Ota.poll()` を `loop()` から頻繁に呼んでください。通信は、設定した間隔（`Ota.begin()` の第3引数、既定とサンプルは 60 秒）ごとにだけ行います。サーバーから `interval <秒>` コマンドで変更できます（開発中は `interval 1`、終わったら `interval 60` など）。間隔は通信量に直結します。
 - サーバーに置くファームにも必ず WioOTA を入れてください。入っていないファームを入れると、以後の遠隔更新ができず、USB DFU での書き直しが必要になります。
 - ログは `Ota.print()` / `Ota.println()` で書きます。4KBのバッファに溜まり、次のポーリングで送られます。
 - コマンドは `Ota.onCommand(handler)` で、1行ずつ受け取ります。

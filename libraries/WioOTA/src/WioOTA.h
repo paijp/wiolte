@@ -44,7 +44,7 @@ public:
 	WioOTA();
 
 	/* baseUrl: server endpoint, e.g. "http://beam.soracom.io:18080/" */
-	void begin(WioLTE &wio, const char *baseUrl, unsigned long intervalMs = 10000);
+	void begin(WioLTE &wio, const char *baseUrl, unsigned long intervalMs = 60000);
 	void setInterval(unsigned long intervalMs) { _interval = intervalMs; }
 	void onCommand(CommandHandler handler) { _handler = handler; }
 	/* Also copy log output to another stream (e.g. SerialUSB). */
