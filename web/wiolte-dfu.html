@@ -85,7 +85,38 @@ Windows では DFU デバイスに WinUSB ドライバーが必要です（Zadig
 
 	/* ---------------- log ---------------- */
 
+	/*
+	 * Upload mode: opened as .../web/#t=<token> on the server that also
+	 * runs serial.php, everything shown in the log (the board's output and
+	 * this page's own lines) is posted there every 2 s, so it can be read
+	 * on the server.  Without a token nothing leaves the browser.
+	 */
+	var token = (/(?:^#|&)t=([0-9a-f]{16,64})/.exec(location.hash) || [])[1];
+	var pending = "", sending = false;
+	if (token)
+		setInterval(flushUpload, 2000);
+	async function flushUpload() {
+		if (sending || !pending)
+			return;
+		var body = pending;
+		pending = "";
+		sending = true;
+		try {
+			var r = await fetch("../serial.php?t=" + token, { method: "POST", body: body,
+				headers: { "Content-Type": "text/plain; charset=utf-8" } });
+			if (!r.ok)
+				throw new Error("HTTP " + r.status);
+		} catch (e) {
+			pending = body + pending;	/* keep it for the next try */
+			if (pending.length > 1000000)
+				pending = pending.slice(-500000);
+		}
+		sending = false;
+	}
+
 	function append(text) {
+		if (token)
+			pending += text;
 		var atBottom = logEl.scrollTop + logEl.clientHeight >= logEl.scrollHeight - 4;
 		logEl.textContent += text;
 		if (logEl.textContent.length > LOG_LIMIT) {
@@ -511,6 +542,8 @@ Windows では DFU デバイスに WinUSB ドライバーが必要です（Zadig
 			connectSerial(false);
 	});
 	status("ファイルを選び、DFU モードの Wio LTE を接続して program を押してください");
+	if (token)
+		line("upload mode: this log is sent to the server");
 	connectSerial(false);
 	/* ?f=OtaDiag.ino.bin preloads one of the published images. */
 	var f = new URLSearchParams(location.search).get("f");

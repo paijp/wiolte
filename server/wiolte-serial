@@ -1,0 +1,36 @@
+#!/bin/sh
+# Serial log relay for web/ (run on the server, in the directory that holds
+# serial.php and data/).
+#   wiolte-serial new [hours]   mint a token (default 24 h), print the page URL
+#   wiolte-serial tail [token] [bytes]   end of a token's log (default: newest)
+#   wiolte-serial list          tokens with expiry and log size
+set -e
+cd "$(dirname "$0")"
+URL=${WIOLTE_WEB_URL:-https://k-keiei.jp/wiolte/web/}
+T=data/serial-tokens
+mkdir -p $T data/serial
+chown apache:apache data/serial 2>/dev/null || true
+case "$1" in
+new)
+	t=$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n')
+	echo $(( $(date +%s) + ${2:-24} * 3600 )) > $T/$t
+	echo "${URL}#t=$t"
+	;;
+tail)
+	t=${2:-$(ls -t data/serial 2>/dev/null | head -1 | sed 's/\.log$//')}
+	[ -n "$t" ] && [ -f data/serial/$t.log ] || { echo "no log yet" >&2; exit 1; }
+	tail -c "${3:-4000}" data/serial/$t.log
+	;;
+list)
+	for f in $T/*; do
+		[ -f "$f" ] || continue
+		t=$(basename "$f")
+		printf '%s  expires %s  log %s bytes\n' "$t" "$(date -d @"$(cat "$f")" '+%F %T')" \
+			"$(stat -c %s data/serial/$t.log 2>/dev/null || echo 0)"
+	done
+	;;
+*)
+	sed -n '2,7p' "$0"
+	exit 1
+	;;
+esac

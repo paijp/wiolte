@@ -124,6 +124,16 @@ echo "reset"      >> data/<ID>/cmd.txt           # リセット（WioOTA の組�
 tail -f data/<ID>/log.txt                         # ログ
 ```
 
+## シリアルログをサーバーに集める（web/ のアップロードモード）
+
+`web/` を `serial.php` と同じサーバー（例: `https://<VPS>/wiolte/web/`）に置き、`#t=<トークン>` 付きで開くと、ページのログ（ボードの USB シリアル出力とページ自身の行）を 2 秒ごとに `serial.php` へ送ります。サーバーでは `data/serial/<トークン>.log` に追記されます。トークンなしで開いたとき（GitHub Pages など）は何も送りません。
+
+```sh
+./wiolte-serial new 24     # 24 時間有効なトークンを作り、ページの URL を表示
+./wiolte-serial tail       # 最新のログの末尾
+./wiolte-serial list       # トークンの一覧
+```
+
 ## USB シリアルでの切り分け
 
 サンプルと WioOTA は、次のような内容を USB シリアルに出します（Android アプリで表示できます）。サーバーに届かない問題の切り分けに使えます。
