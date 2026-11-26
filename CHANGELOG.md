@@ -10,7 +10,7 @@
     request; the socket path connects in ~70 ms (median request 0.24 s).
   - Firmware is fetched in 16KB chunks: a 128KB image downloads in ~12 s.
   - USB serial diagnostics (`wioota: ...`), optional request timing.
-  - Polls every 60 s by default; the built-in `interval <s>` command
+  - Polls every 15 s by default; the built-in `interval <s>` command
     changes it from the server.
 - OtaBasic (starter app) and OtaDiag (timing, TCP probe, AT trace) examples.
 - `wiolte-full.bin`: bootloader + starter app for a blank board.

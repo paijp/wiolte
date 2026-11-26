@@ -1,7 +1,7 @@
 /*
  * WioOTA basic example.
  *
- * - Polls the server every 60 s ("interval <s>" command changes it) and
+ * - Polls the server every 15 s ("interval <s>" command changes it) and
  *   logs the uptime every minute.
  * - Commands from the server or USB serial: "led R G B", "ping",
  *   "reset" (server only, built in).
@@ -59,7 +59,7 @@ void setup()
 	SerialUSB.println("lte: connected, server " OTA_URL);
 	Wio.LedSetRGB(0, 10, 0);
 
-	Ota.begin(Wio, OTA_URL, 60000);	/* "interval <s>" from the server changes it */
+	Ota.begin(Wio, OTA_URL, 15000);	/* "interval <s>" from the server changes it */
 	Ota.onCommand(onCommand);
 	Ota.print("boot, crc=");
 	Ota.println(Ota.currentCrc(), HEX);
