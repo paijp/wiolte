@@ -10,6 +10,7 @@
 #define AIRCR	(*(volatile uint32_t *)0xe000ed0cUL)
 
 static char s_buf[WIOOTA_CHUNK + 1];	/* shared by log POST / poll / chunk GET */
+static char s_rx[WIOOTA_CHUNK + 2048];	/* raw HTTP response (headers + body) */
 
 static void ota_logf(Print *out, const char *fmt, ...)
 {
@@ -40,9 +41,112 @@ void WioOTA::begin(WioLTE &wio, const char *baseUrl, unsigned long intervalMs)
 {
 	_wio = &wio;
 	_base = baseUrl;
+	parseUrl(baseUrl);
 	_interval = intervalMs;
 	_first = true;
 	bootReport();
+}
+
+/* Split "http://host[:port][/path]" into _host, _port, _path. */
+void WioOTA::parseUrl(const char *u)
+{
+	const char *p = u, *h;
+	int n;
+
+	if (strncmp(p, "http://", 7) == 0)
+		p += 7;
+	h = p;
+	while (*p && *p != ':' && *p != '/')
+		p++;
+	n = p - h < (int)sizeof(_host) - 1 ? p - h : (int)sizeof(_host) - 1;
+	memcpy(_host, h, n);
+	_host[n] = 0;
+	_port = 80;
+	if (*p == ':') {
+		_port = atoi(p + 1);
+		while (*p && *p != '/')
+			p++;
+	}
+	snprintf(_path, sizeof(_path), "%s", *p ? p : "/");
+}
+
+static int ci_prefix(const char *s, const char *pre)
+{
+	for (; *pre; s++, pre++)
+		if ((*s | 0x20) != (*pre | 0x20))
+			return 0;
+	return 1;
+}
+
+/*
+ * One HTTP/1.1 request over a plain TCP socket (AT+QIOPEN etc.).
+ * The module's own HTTP client (AT+QHTTPGET/POST) was seen to wait ~30 s
+ * before connecting on every other request; raw sockets do not.
+ * Returns the body length copied to out (NUL-terminated), or -1.
+ */
+int WioOTA::http(const char *method, const char *query, const char *body, int bodyLen,
+	char *out, int outSize, int *status)
+{
+	char hdr[256];
+	int id, n, got = 0, hl, clen = -1, off;
+	unsigned long t0;
+	char *p, *end;
+
+	*status = -1;
+	id = _wio->SocketOpen(_host, _port, WioLTE::SOCKET_TCP);
+	if (id < 0)
+		return -1;
+	n = snprintf(hdr, sizeof(hdr),
+		"%s %s%s%s HTTP/1.1\r\nHost: %s:%d\r\nConnection: close\r\n"
+		"Content-Type: text/plain\r\nContent-Length: %d\r\n\r\n",
+		method, _path, query ? (strchr(_path, '?') ? "&" : "?") : "", query ? query : "",
+		_host, _port, bodyLen);
+	if (n >= (int)sizeof(hdr) || !_wio->SocketSend(id, (const byte *)hdr, n))
+		goto fail;
+	for (off = 0; off < bodyLen; off += n) {
+		n = bodyLen - off < 1024 ? bodyLen - off : 1024;
+		if (!_wio->SocketSend(id, (const byte *)body + off, n))
+			goto fail;
+	}
+	/* Read until Content-Length is satisfied (the server always sends it). */
+	t0 = millis();
+	while (millis() - t0 < 30000) {
+		if ((int)sizeof(s_rx) - 1 - got < 1500)
+			break;			/* QIRD may return up to 1500 bytes */
+		n = _wio->SocketReceive(id, (byte *)s_rx + got, sizeof(s_rx) - 1 - got);
+		if (n < 0)
+			goto fail;
+		if (n == 0) {
+			delay(10);
+			continue;
+		}
+		got += n;
+		s_rx[got] = 0;
+		end = strstr(s_rx, "\r\n\r\n");
+		if (end == NULL)
+			continue;
+		hl = end + 4 - s_rx;
+		if (clen < 0) {
+			*status = strncmp(s_rx, "HTTP/1.", 7) == 0 ? atoi(s_rx + 9) : -1;
+			for (p = s_rx; p && p < end; p = strstr(p, "\r\n") ? strstr(p, "\r\n") + 2 : NULL)
+				if (ci_prefix(p, "content-length:"))
+					clen = atoi(p + 15);
+			if (clen < 0)
+				goto fail;	/* no chunked support; the server sends a length */
+		}
+		if (got - hl >= clen)
+			break;
+	}
+	_wio->SocketClose(id);
+	end = strstr(s_rx, "\r\n\r\n");
+	if (got == 0 || end == NULL || clen < 0 || got - (end + 4 - s_rx) < clen || clen > outSize - 1)
+		return -1;
+	memcpy(out, end + 4, clen);
+	out[clen] = 0;
+	return clen;
+fail:
+	_wio->SocketClose(id);
+	return -1;
 }
 
 /* Describe what the bootloader did with the last update record. */
@@ -91,7 +195,7 @@ void WioOTA::url(char *buf, int size, const char *query)
 
 bool WioOTA::postLog()
 {
-	char u[256];
+	char rb[16];
 	uint32_t n = _head - _tail, i;
 	int code = 0;
 
@@ -102,9 +206,8 @@ bool WioOTA::postLog()
 	for (i = 0; i < n; i++)
 		s_buf[i] = _log[(_tail + i) % WIOOTA_LOG_SIZE];
 	s_buf[n] = 0;
-	url(u, sizeof(u), "a=log");
 	unsigned long t0 = millis();
-	bool posted = _wio->HttpPost(u, s_buf, &code);
+	bool posted = http("POST", "a=log", s_buf, n, rb, sizeof(rb), &code) >= 0;
 	if (_timing)
 		ota_logf(this, "timing: log POST %lu ms ok=%d code=%d bytes=%lu\n",
 			millis() - t0, posted, code, (unsigned long)n);
@@ -125,13 +228,19 @@ bool WioOTA::postLog()
 
 bool WioOTA::fetch(char *resp, int size)
 {
-	char u[256], q[48];
-	int len;
+	char q[48];
+	int len, code;
 
 	snprintf(q, sizeof(q), "a=poll&crc=%08lx", (unsigned long)currentCrc());
-	url(u, sizeof(u), q);
 	unsigned long t0 = millis();
-	len = _wio->HttpGet(u, resp, size);
+	len = http("GET", q, NULL, 0, resp, size, &code);
+	if (len >= 0 && code != 200) {
+		char m[48];
+
+		snprintf(m, sizeof(m), "wioota: poll GET HTTP %d", code);
+		diag(m);
+		return false;
+	}
 	if (_timing)
 		ota_logf(this, "timing: poll GET %lu ms len=%d\n", millis() - t0, len);
 	if (len < 0) {
@@ -223,7 +332,7 @@ bool WioOTA::poll(bool force)
 
 bool WioOTA::update(uint32_t len, uint32_t crc)
 {
-	char u[256], q[64];
+	char q[64];
 	uint32_t off;
 	struct wioota_meta m;
 
@@ -248,9 +357,12 @@ bool WioOTA::update(uint32_t len, uint32_t crc)
 			n = WIOOTA_CHUNK;
 		snprintf(q, sizeof(q), "a=fw&o=%lu&n=%lu&crc=%08lx",
 			(unsigned long)off, (unsigned long)n, (unsigned long)crc);
-		url(u, sizeof(u), q);
 		for (retry = 0; retry < 3; retry++) {
-			got = _wio->HttpGet(u, s_buf, sizeof(s_buf));
+			int code;
+
+			got = http("GET", q, NULL, 0, s_buf, sizeof(s_buf), &code);
+			if (code != 200)
+				got = -1;
 			if (got == (int)n)
 				break;
 		}

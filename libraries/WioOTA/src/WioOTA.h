@@ -76,9 +76,15 @@ private:
 	void handleLine(char *line);
 	bool update(uint32_t len, uint32_t crc);
 	void url(char *buf, int size, const char *query);
+	void parseUrl(const char *u);
+	int http(const char *method, const char *query, const char *body, int bodyLen,
+		char *out, int outSize, int *status);
 
 	WioLTE *_wio;
 	const char *_base;
+	char _host[64];
+	int _port;
+	char _path[96];
 	unsigned long _interval;
 	unsigned long _last;
 	bool _first;
