@@ -347,14 +347,35 @@
 		serial = null;
 		line(why);
 		status("シリアル切断 — 再接続を待っています…");
-		/* The board re-enumerates after an OTA reset; follow it back. */
+		/*
+		 * The board re-enumerates after an OTA reset.  Desktops keep the
+		 * permission and reconnect here; Android treats it as a new device,
+		 * which only a tap can grant, so ask for one.
+		 */
 		(async function () {
-			for (var i = 0; i < 60 && !serial && !busy; i++) {
+			for (var i = 0; i < 15 && !serial && !busy; i++) {
 				await sleep(1000);
 				if (await connectSerial(false))
 					return;
 			}
+			if (!serial && !busy)
+				askTap();
 		})();
+	}
+
+	/* Make the "connect" button impossible to miss, and buzz the phone. */
+	function askTap() {
+		var b = $("serial");
+		b.classList.add("pri", "attn");
+		b.textContent = "タップしてシリアル再接続";
+		status("ボードが再起動しました。「タップしてシリアル再接続」を押してください");
+		if (navigator.vibrate)
+			navigator.vibrate([200, 100, 200]);
+	}
+	function clearTap() {
+		var b = $("serial");
+		b.classList.remove("pri", "attn");
+		b.textContent = "シリアル接続";
 	}
 
 	async function closeSerial() {
@@ -391,6 +412,7 @@
 					return false;
 				serial = await openUsbCdc(d);
 			}
+			clearTap();
 			line("monitoring USB serial");
 			status("Wio LTE 実行中 — USB シリアル表示中");
 			return true;
@@ -408,8 +430,8 @@
 				return;
 			await sleep(200);
 		}
-		line("15 秒以内に USB シリアルが見つかりません。初回は「シリアル接続」を押して選んでください（ブートローダーのみの場合は出ません）");
-		status("書き込み完了");
+		line("USB シリアルに自動で接続できませんでした（ブートローダーのみの場合は出ません）");
+		askTap();
 	}
 
 	async function send(newline) {

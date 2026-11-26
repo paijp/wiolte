@@ -13,7 +13,7 @@ Claude ── VPS: data/<ID>/firmware.bin を置く / cmd.txt に追記 / log.tx
 
 ## 実機で確認済み
 
-- `rel/wiolte-full.bin` を Android アプリから DFU で書き込み、LTE 接続・サーバー接続まで動作
+- `rel/wiolte-full.bin` をブラウザ（WebUSB、Android の Chrome）から DFU で書き込み、LTE 接続・サーバー接続まで動作
 - VPS に `firmware.bin`（約 126KB）を置いてから、ダウンロード・書き込み・新ファームでの起動まで約 1 分
 - `cmd.txt` のコマンド（`ping`、`led 0 0 10`）が次のポーリングで届き、応答が `log.txt` に返る
 
@@ -25,8 +25,7 @@ Claude ── VPS: data/<ID>/firmware.bin を置く / cmd.txt に追記 / log.tx
 | `libraries/WioOTA/` | Arduinoライブラリ。ログ送信、コマンド受信、ファーム更新の検出とダウンロードを行います |
 | `libraries/WioOTA/examples/OtaBasic/` | サンプルスケッチ |
 | `server/index.php` | サーバー側（Beamの転送先）。PHPのファイル1つです |
-| `android/` | Wio LTEにUSB DFUで `.bin` を書き込むAndroidアプリ（OTG接続） |
-| `web/` | 同じことをブラウザ（WebUSB）から行うページ。GitHub Pages で公開 |
+| `web/` | Wio LTE に USB DFU で `.bin` を書き込み、USB シリアルを表示するページ（WebUSB）。GitHub Pages で公開 |
 
 ## フラッシュ配置
 
@@ -72,17 +71,14 @@ arduino-cli compile --fqbn SeeedJP:Seeed_STM32F4:wioGpsM4 \
 # out/OtaBasic.ino.bin がサーバーに置くイメージ（0x08010000 用）
 ```
 
-GitHub Actions（`.github/workflows/build.yml`）が、ブートローダー、サンプルスケッチ、Android APKをビルドします。main への push では、ビルド結果を `rel/` にコミットします。
+GitHub Actions（`.github/workflows/build.yml`）が、ブートローダー、サンプルスケッチ（OtaBasic、OtaDiag）をビルドします。main への push では、ビルド結果を `rel/` にコミットします（開発中の最新版）。`v*` のタグを push すると、GitHub Releases に一式（ファーム、`WioOTA-x.y.z.zip`、オフライン用 `wiolte-dfu.html`、サーバー一式）を添付したリリースを作ります。タグは `library.properties` の `version` と一致させてください。
 
 | ファイル | 内容 |
 |---|---|
 | `rel/wiolte-full.bin` | ブートローダー + 最小アプリ（新品のボードに DFU で書く 1 ファイル） |
 | `rel/bootloader.bin` | ブートローダーのみ |
 | `rel/OtaBasic.ino.bin` | サンプルアプリ（0x08010000 用。サーバーに置くイメージの例） |
-| `rel/wioflash.apk` / `rel/version.txt` | Android アプリと、そのビルド番号 |
 
-アプリは起動時に `rel/version.txt` を確認し、新しいビルドがあれば、ダイアログで確認したうえで `rel/wioflash.apk` をダウンロードしてインストールします（初回のみ「このアプリからのインストールを許可」をオンにする必要があります）。
-APKは、リポジトリにある固定のデバッグ鍵（`android/debug.keystore`）で署名します。そのため、新しいAPKを上書きインストールできます。
 
 ## 初回の書き込み（USB DFU）
 
@@ -95,10 +91,6 @@ BOOTボタンを押しながらRSTを押して離すと、DFUモードになり�
   ```sh
   dfu-util -d 0483:df11 -a 0 -s 0x08000000:leave -D rel/wiolte-full.bin
   ```
-- Androidから書き込む場合: `android/` のアプリ（Wio Flash）で、▾ からファイルを選び（共有・「開く」でも受け取れます）、**program** を押します。書き込み先（0x08000000 / 0x08010000）はファイルのベクタテーブルから自動判別します。書き込み・ベリファイ後に起動し、スケッチの USB シリアルに自動で接続して出力を表示します。下の入力欄からボードへ送信できます（send ボタンはそのまま、Enter は LF 付き）。
-  - ▾ には「開く…」、選択中のファイル、最近使ったファイル（最大 8 件）が並びます。
-  - アプリ自身のメッセージは「· 」付きで、ボードの出力と区別して表示します。共有・開くで受け取ったときは、そのインテントの内容も表示します。
-  - リセットボタンはありません（Wio LTE はホストからリセットできないため）。
 
 以後の更新は、サーバーに `firmware.bin` を置くだけです。
 
@@ -136,7 +128,7 @@ tail -f data/<ID>/log.txt                         # ログ
 
 ## USB シリアルでの切り分け
 
-サンプルと WioOTA は、次のような内容を USB シリアルに出します（Android アプリで表示できます）。サーバーに届かない問題の切り分けに使えます。
+サンプルと WioOTA は、次のような内容を USB シリアルに出します（Web ページで表示できます）。サーバーに届かない問題の切り分けに使えます。
 
 | 出力 | 意味 |
 |---|---|
@@ -161,3 +153,7 @@ tail -f data/<ID>/log.txt                         # ログ
 - サーバーに `firmware.bin` があると、DFUで別のアプリを書いても、次のポーリングでサーバー側のファームに置き換わります。DFUで書いたアプリを使い続けたいときは、`firmware.bin` を消してください。
 - 通信中（数秒）は `poll()` が戻りません。
 - `firmware.bin` の正当性は、BeamとHTTPSによる経路の保護と、CRCによる転送エラーの検出に頼っています。署名検証はしていません。
+
+## ライセンス
+
+MIT（`LICENSE`）。

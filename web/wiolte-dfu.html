@@ -26,6 +26,8 @@
   progress { width: 100%; accent-color: var(--bar); }
   #log { margin: 12px 0 8px; max-height: 55vh; min-height: 8em; overflow: auto; padding: 10px; border-radius: 6px;
     background: var(--scr); color: var(--scr-fg); font: 12px ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+  button.attn { font-size: 1.15em; padding: 12px 18px; animation: pulse 1s ease-in-out infinite alternate; }
+  @keyframes pulse { from { filter: brightness(1); } to { filter: brightness(1.35); } }
   .note { font-size: .8em; color: var(--mute); margin-top: 16px; max-width: 40rem; }
 </style>
 </head>
@@ -409,14 +411,35 @@ Windows では DFU デバイスに WinUSB ドライバーが必要です（Zadig
 		serial = null;
 		line(why);
 		status("シリアル切断 — 再接続を待っています…");
-		/* The board re-enumerates after an OTA reset; follow it back. */
+		/*
+		 * The board re-enumerates after an OTA reset.  Desktops keep the
+		 * permission and reconnect here; Android treats it as a new device,
+		 * which only a tap can grant, so ask for one.
+		 */
 		(async function () {
-			for (var i = 0; i < 60 && !serial && !busy; i++) {
+			for (var i = 0; i < 15 && !serial && !busy; i++) {
 				await sleep(1000);
 				if (await connectSerial(false))
 					return;
 			}
+			if (!serial && !busy)
+				askTap();
 		})();
+	}
+
+	/* Make the "connect" button impossible to miss, and buzz the phone. */
+	function askTap() {
+		var b = $("serial");
+		b.classList.add("pri", "attn");
+		b.textContent = "タップしてシリアル再接続";
+		status("ボードが再起動しました。「タップしてシリアル再接続」を押してください");
+		if (navigator.vibrate)
+			navigator.vibrate([200, 100, 200]);
+	}
+	function clearTap() {
+		var b = $("serial");
+		b.classList.remove("pri", "attn");
+		b.textContent = "シリアル接続";
 	}
 
 	async function closeSerial() {
@@ -453,6 +476,7 @@ Windows では DFU デバイスに WinUSB ドライバーが必要です（Zadig
 					return false;
 				serial = await openUsbCdc(d);
 			}
+			clearTap();
 			line("monitoring USB serial");
 			status("Wio LTE 実行中 — USB シリアル表示中");
 			return true;
@@ -470,8 +494,8 @@ Windows では DFU デバイスに WinUSB ドライバーが必要です（Zadig
 				return;
 			await sleep(200);
 		}
-		line("15 秒以内に USB シリアルが見つかりません。初回は「シリアル接続」を押して選んでください（ブートローダーのみの場合は出ません）");
-		status("書き込み完了");
+		line("USB シリアルに自動で接続できませんでした（ブートローダーのみの場合は出ません）");
+		askTap();
 	}
 
 	async function send(newline) {

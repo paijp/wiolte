@@ -26,6 +26,8 @@
   progress { width: 100%; accent-color: var(--bar); }
   #log { margin: 12px 0 8px; max-height: 55vh; min-height: 8em; overflow: auto; padding: 10px; border-radius: 6px;
     background: var(--scr); color: var(--scr-fg); font: 12px ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+  button.attn { font-size: 1.15em; padding: 12px 18px; animation: pulse 1s ease-in-out infinite alternate; }
+  @keyframes pulse { from { filter: brightness(1); } to { filter: brightness(1.35); } }
   .note { font-size: .8em; color: var(--mute); margin-top: 16px; max-width: 40rem; }
 </style>
 </head>
