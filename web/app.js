@@ -398,21 +398,22 @@
 		if (f)
 			setImage(new Uint8Array(await f.arrayBuffer()), f.name);
 	};
-	$("useRel").onclick = async function () {
-		/* Published next to this page by the Pages workflow; raw GitHub as fallback. */
-		var urls = ["wiolte-full.bin", "https://raw.githubusercontent.com/paijp/wiolte/main/rel/wiolte-full.bin"];
+	/* Published next to this page by the Pages workflow; raw GitHub as fallback. */
+	async function loadPublished(name) {
+		var urls = [name, "https://raw.githubusercontent.com/paijp/wiolte/main/rel/" + name];
 		for (var i = 0; i < urls.length; i++) {
 			try {
 				var r = await fetch(urls[i], { cache: "no-store" });
 				if (!r.ok)
 					continue;
-				setImage(new Uint8Array(await r.arrayBuffer()), "wiolte-full.bin");
+				setImage(new Uint8Array(await r.arrayBuffer()), name);
 				line("loaded " + urls[i]);
 				return;
 			} catch (e) { /* try the next */ }
 		}
-		line("wiolte-full.bin を取得できませんでした（オフラインでは「ファイルを開く」を使ってください）");
-	};
+		line(name + " を取得できませんでした（オフラインでは「ファイルを開く」を使ってください）");
+	}
+	$("useRel").onclick = function () { loadPublished("wiolte-full.bin"); };
 	$("program").onclick = program;
 	$("serial").onclick = function () {
 		if (serial)
@@ -449,4 +450,8 @@
 	});
 	status("ファイルを選び、DFU モードの Wio LTE を接続して program を押してください");
 	connectSerial(false);
+	/* ?f=OtaDiag.ino.bin preloads one of the published images. */
+	var f = new URLSearchParams(location.search).get("f");
+	if (f && /^[A-Za-z0-9._-]+\.bin$/.test(f))
+		loadPublished(f);
 })();

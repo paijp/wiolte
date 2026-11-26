@@ -44,10 +44,42 @@ jobs:
           # word 1 (reset handler) must point into 0x0801xxxx..0x0807xxxx
           od -A n -t x4 -N 8 out/OtaBasic.ino.bin
           od -A n -t x4 -j 4 -N 4 out/OtaBasic.ino.bin | grep -Eq ' 080[1-7]'
+      - name: Build OtaDiag (WioLTE AT trace on USB serial, millis-stamped)
+        run: |
+          # Copy the WioLTE library and stamp each Debug::Print line with millis().
+          src=$(dirname "$(find ~/Arduino/libraries -name WioLTE.h -path '*src*' | head -1)")
+          cp -r "$(dirname "$src")" wiolte-trace
+          cat > wiolte-trace/src/Internal/Debug.cpp <<'CPP'
+          #include "../WioLTEConfig.h"
+          #include "Debug.h"
+          #ifdef WIO_DEBUG
+          static bool atLineStart = true;
+          void Debug::Print(const char* str)
+          {
+          	for (; *str; str++) {
+          		if (atLineStart) { SerialUSB.print('['); SerialUSB.print(millis()); SerialUSB.print("] "); }
+          		SerialUSB.print(*str);
+          		atLineStart = *str == '\n';
+          	}
+          }
+          void Debug::Println(const char* str) { Print(str); Print("\r\n"); }
+          #endif
+          CPP
+          arduino-cli compile --fqbn SeeedJP:Seeed_STM32F4:wioGpsM4 \
+            --library wiolte-trace --libraries libraries \
+            --build-property build.ldscript=ld/flash.ld \
+            --build-property build.vect=VECT_TAB_FLASH \
+            --build-property "compiler.cpp.extra_flags=-DWIO_DEBUG" \
+            --output-dir out-diag \
+            libraries/WioOTA/examples/OtaDiag
+          od -A n -t x4 -j 4 -N 4 out-diag/OtaDiag.ino.bin | grep -Eq ' 080[1-7]'
+          cp out-diag/OtaDiag.ino.bin out/
       - uses: actions/upload-artifact@v4
         with:
           name: sketch
-          path: out/OtaBasic.ino.bin
+          path: |
+            out/OtaBasic.ino.bin
+            out/OtaDiag.ino.bin
 
   android:
     runs-on: ubuntu-latest
@@ -79,7 +111,7 @@ jobs:
         run: |
           mkdir -p rel
           cp artifacts/bootloader/bootloader.bin rel/
-          cp artifacts/sketch/OtaBasic.ino.bin rel/
+          cp artifacts/sketch/OtaBasic.ino.bin artifacts/sketch/OtaDiag.ino.bin rel/
           cp artifacts/wioflash-apk/*.apk rel/wioflash.apk
           echo "${GITHUB_RUN_NUMBER}" > rel/version.txt
           # One image for a blank board: bootloader at 0x08000000, 0xff up to

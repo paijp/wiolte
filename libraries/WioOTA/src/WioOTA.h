@@ -49,6 +49,8 @@ public:
 	void onCommand(CommandHandler handler) { _handler = handler; }
 	/* Also copy log output to another stream (e.g. SerialUSB). */
 	void setEcho(Print *echo) { _echo = echo; }
+	/* Log how long each HTTP request took ("timing: ..." lines). */
+	void setTiming(bool on) { _timing = on; }
 
 	/*
 	 * Call from loop().  When the interval has elapsed (or force is
@@ -82,6 +84,7 @@ private:
 	bool _first;
 	CommandHandler _handler;
 	Print *_echo;
+	bool _timing;
 
 	char _log[WIOOTA_LOG_SIZE];
 	volatile uint32_t _head, _tail;	/* free-running indices */

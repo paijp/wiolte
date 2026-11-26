@@ -32,7 +32,7 @@ static void system_reset(void)
 
 WioOTA::WioOTA()
 	: _wio(NULL), _base(NULL), _interval(10000), _last(0), _first(true),
-	  _handler(NULL), _echo(NULL), _head(0), _tail(0)
+	  _handler(NULL), _echo(NULL), _timing(false), _head(0), _tail(0)
 {
 }
 
@@ -103,7 +103,12 @@ bool WioOTA::postLog()
 		s_buf[i] = _log[(_tail + i) % WIOOTA_LOG_SIZE];
 	s_buf[n] = 0;
 	url(u, sizeof(u), "a=log");
-	if (!_wio->HttpPost(u, s_buf, &code)) {
+	unsigned long t0 = millis();
+	bool posted = _wio->HttpPost(u, s_buf, &code);
+	if (_timing)
+		ota_logf(this, "timing: log POST %lu ms ok=%d code=%d bytes=%lu\n",
+			millis() - t0, posted, code, (unsigned long)n);
+	if (!posted) {
 		diag("wioota: log POST failed (no HTTP response; check LTE / Beam)");
 		return false;
 	}
@@ -125,7 +130,10 @@ bool WioOTA::fetch(char *resp, int size)
 
 	snprintf(q, sizeof(q), "a=poll&crc=%08lx", (unsigned long)currentCrc());
 	url(u, sizeof(u), q);
+	unsigned long t0 = millis();
 	len = _wio->HttpGet(u, resp, size);
+	if (_timing)
+		ota_logf(this, "timing: poll GET %lu ms len=%d\n", millis() - t0, len);
 	if (len < 0) {
 		diag("wioota: poll GET failed (no HTTP response; check LTE / Beam)");
 		return false;

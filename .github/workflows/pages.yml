@@ -37,7 +37,7 @@ jobs:
         run: |
           mkdir -p site
           cp web/index.html web/app.js web/wiolte-dfu.html site/
-          cp rel/wiolte-full.bin rel/bootloader.bin rel/OtaBasic.ino.bin site/
+          cp rel/wiolte-full.bin rel/bootloader.bin rel/OtaBasic.ino.bin rel/OtaDiag.ino.bin site/
           ls -l site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
