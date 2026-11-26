@@ -49,6 +49,9 @@ jobs:
           # Copy the WioLTE library and stamp each Debug::Print line with millis().
           src=$(dirname "$(find ~/Arduino/libraries -name WioLTE.h -path '*src*' | head -1)")
           cp -r "$(dirname "$src")" wiolte-trace
+          # Turn the trace on in the copy only (every source includes WioLTEConfig.h first).
+          sed -i 's/#include <Arduino.h>/#include <Arduino.h>\n#define WIO_DEBUG/' wiolte-trace/src/WioLTEConfig.h
+          grep -q WIO_DEBUG wiolte-trace/src/WioLTEConfig.h
           cat > wiolte-trace/src/Internal/Debug.cpp <<'CPP'
           #include "../WioLTEConfig.h"
           #include "Debug.h"
@@ -69,7 +72,6 @@ jobs:
             --library wiolte-trace --libraries libraries \
             --build-property build.ldscript=ld/flash.ld \
             --build-property build.vect=VECT_TAB_FLASH \
-            --build-property "compiler.cpp.extra_flags=-DWIO_DEBUG" \
             --output-dir out-diag \
             libraries/WioOTA/examples/OtaDiag
           od -A n -t x4 -j 4 -N 4 out-diag/OtaDiag.ino.bin | grep -Eq ' 080[1-7]'
